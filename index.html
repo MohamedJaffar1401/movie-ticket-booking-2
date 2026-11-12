@@ -718,7 +718,7 @@ int main() {
   var LOG_SHOWN = 8;
 
   /* Each movie has its own screen: its own seat map. seats[i] is null (free) or a booking id. */
-  var movies = ['Neon Harbor', 'The Last Lantern', 'Paper Moons'].map(function (name) {
+  var movies = ['The Interview', 'Tropic Thunder', 'The Hangover'].map(function (name) {
     var seats = [];
     for (var i = 0; i < SEATS_PER_SCREEN; i++) seats.push(null);
     return { name: name, seats: seats };
