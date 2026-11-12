@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Movie Ticket Booking System | CSE 2102 Data Structures</title>
+<meta name="description" content="A data structures project: booking requests wait in a queue and confirmed tickets sit on a stack. Every movie has its own screen. Try it live.">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #E9EDF4;
+  --panel: #FFFFFF;
+  --line: #C6CEDF;
+  --ink: #12172B;
+  --muted: #4A5370;
+  --primary: #2B3AA0;
+  --on-primary: #FFFFFF;
+  --seat-free: #DCE2F0;
+  --seat-free-line: #AEB9D3;
+  --seat-booked: #2B3AA0;
+  --ticket: #F4C14D;
+  --ticket-ink: #1B1630;
+  --danger: #A3262A;
+  --focus: #2B3AA0;
+  --code-bg: #14182B;
+  --code-ink: #E6E9F5;
+  --display: Rockwell, "Rockwell Nova", "Roboto Slab", Georgia, serif;
+  --body: "Avenir Next", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #0F1322;
+    --panel: #181D33;
+    --line: #2C3454;
+    --ink: #E8EBF6;
+    --muted: #A6AECB;
+    --primary: #9AA6FF;
+    --on-primary: #0F1322;
+    --seat-free: #2A3150;
+    --seat-free-line: #3C4570;
+    --seat-booked: #9AA6FF;
+    --ticket: #E5B547;
+    --danger: #FF8A8E;
+    --focus: #C3CBFF;
+    --code-bg: #0B0E1B;
+  }
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+a { color: var(--primary); }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+.wrap { width: min(1120px, 100% - 2rem); margin-inline: auto; }
+
+/* header */
+.site-header { border-bottom: 1px solid var(--line); }
+.site-header .wrap {
+  display: flex; flex-wrap: wrap; align-items: center;
+  justify-content: space-between; gap: .5rem 1.5rem; padding-block: .9rem;
+}
+.brand { font-family: var(--display); font-weight: 700; font-size: 1.15rem; color: var(--ink); text-decoration: none; }
+.site-header nav { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; }
+.site-header nav a { color: var(--ink); text-decoration: none; padding: .2rem 0; border-bottom: 2px solid transparent; }
+.site-header nav a:hover { border-bottom-color: var(--primary); }
+
+/* hero */
+.hero { padding: clamp(2.5rem, 7vw, 5rem) 0 2rem; }
+.hero h1 {
+  font-family: var(--display); font-weight: 700;
+  font-size: clamp(2.5rem, 7vw, 4.6rem); line-height: 1.02;
+  letter-spacing: -.02em; margin: 0 0 1rem; max-width: 14ch;
+}
+.hero p { font-size: 1.15rem; color: var(--muted); max-width: 62ch; margin: 0; }
+
+h2 { font-family: var(--display); font-size: clamp(1.6rem, 3.5vw, 2.1rem); line-height: 1.15; margin: 0 0 .4rem; }
+h3 { font-size: 1.1rem; margin: 0 0 .25rem; }
+.sub { color: var(--muted); margin: 0 0 1.1rem; max-width: 66ch; }
+section { padding-block: 2.5rem; }
+
+/* demo layout */
+.demo-cols { display: grid; gap: 1.25rem; grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 860px) { .demo-cols { grid-template-columns: 1fr 1fr; } }
+.col { display: grid; gap: 1.25rem; min-width: 0; }
+
+.panel {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 14px; padding: 1.25rem; min-width: 0;
+}
+
+/* form */
+.field { margin-bottom: 1rem; }
+label, .label { display: block; font-weight: 600; margin-bottom: .3rem; }
+input[type="text"], input[type="number"], select {
+  width: 100%; font: inherit; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 8px; padding: .6rem .75rem;
+}
+input::placeholder { color: var(--muted); opacity: .8; }
+.error { color: var(--danger); font-size: .92rem; margin: .3rem 0 0; min-height: 1.2em; }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); }
+.stepper button {
+  width: 2.6rem; height: 2.6rem; border: 0; background: transparent; color: var(--ink);
+  font-size: 1.3rem; cursor: pointer; border-radius: 999px;
+}
+.stepper button:hover:not(:disabled) { background: var(--seat-free); }
+.stepper button:disabled { opacity: .35; cursor: default; }
+.stepper output { min-width: 2.2rem; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.btn-row { display: flex; flex-wrap: wrap; gap: .6rem; }
+.btn {
+  font: inherit; font-weight: 600; cursor: pointer; padding: .65rem 1.1rem;
+  border-radius: 999px; border: 1px solid var(--primary);
+  background: var(--primary); color: var(--on-primary);
+}
+.btn:hover:not(:disabled) { filter: brightness(1.1); }
+.btn.secondary { background: transparent; color: var(--primary); }
+.btn.secondary:hover:not(:disabled) { background: var(--seat-free); filter: none; }
+.btn:disabled { opacity: .4; cursor: default; }
+
+/* screen & seats */
+.screen-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .25rem 1rem; margin-bottom: .75rem; }
+.tabs { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
+.tab {
+  font: inherit; cursor: pointer; text-align: left; color: var(--ink);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: .45rem .75rem;
+}
+.tab small { display: block; color: var(--muted); font-size: .82rem; }
+.tab[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.tab[aria-pressed="true"] small { color: inherit; opacity: .85; }
+.screen-bar {
+  height: 10px; border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  background: linear-gradient(var(--seat-free-line), var(--seat-free));
+  margin: 0 8% .9rem;
+}
+.seats { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; }
+@media (max-width: 520px) { .seats { grid-template-columns: repeat(5, 1fr); gap: 8px; } }
+.seat {
+  font: inherit; padding: 0; min-height: 2.6rem;
+  aspect-ratio: 1 / 1; display: grid; place-items: center;
+  font-size: .78rem; font-weight: 600; font-variant-numeric: tabular-nums;
+  background: var(--seat-free); border: 1px solid var(--seat-free-line);
+  border-radius: 6px 6px 3px 3px; color: var(--ink); cursor: pointer;
+}
+.seat:hover:not(:disabled):not([aria-pressed="true"]) { border-color: var(--primary); }
+.seat[aria-pressed="true"] { background: var(--ticket); border-color: var(--ticket-ink); border-width: 2px; color: var(--ticket-ink); }
+.seat.held { background: transparent; border-style: dashed; border-color: var(--primary); color: var(--muted); cursor: not-allowed; }
+.seat.booked { background: var(--seat-booked); border-color: var(--seat-booked); color: var(--on-primary); cursor: not-allowed; }
+.legend { display: flex; gap: 1rem; margin: .9rem 0 0; font-size: .9rem; color: var(--muted); flex-wrap: wrap; }
+.legend span::before { content: ""; display: inline-block; width: .9rem; height: .9rem; border-radius: 3px; margin-right: .4rem; vertical-align: -2px; background: var(--seat-free); border: 1px solid var(--seat-free-line); }
+.legend .s::before { background: var(--ticket); border-color: var(--ticket-ink); }
+.legend .h::before { background: transparent; border: 1px dashed var(--primary); }
+.legend .b::before { background: var(--seat-booked); border-color: var(--seat-booked); }
+.picked { font-weight: 600; margin: .9rem 0 1rem; min-height: 1.5em; }
+.seat-count { font-weight: 600; margin: 0; }
+
+/* queue */
+.list { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: .5rem; }
+.q-item {
+  display: grid; grid-template-columns: auto 1fr auto; gap: .2rem .75rem; align-items: center;
+  border: 1px solid var(--line); border-radius: 10px; padding: .6rem .75rem; background: var(--bg);
+}
+.q-id { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--primary); }
+.q-main { min-width: 0; overflow-wrap: anywhere; }
+.q-main span { color: var(--muted); display: block; font-size: .92rem; }
+.pos { font-size: .82rem; color: var(--muted); }
+.hit { outline: 3px solid var(--focus); outline-offset: 1px; }
+.empty { color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; padding: .9rem; margin: 0 0 1rem; }
+
+/* tickets (stack) */
+.ticket {
+  --notch: var(--panel);
+  position: relative; display: grid; grid-template-columns: 1fr auto; align-items: stretch;
+  background: var(--ticket); color: var(--ticket-ink); border-radius: 10px;
+}
+.ticket.fresh { animation: drop .28s ease-out; }
+.ticket::before, .ticket::after {
+  content: ""; position: absolute; right: calc(4.6rem - 7px); width: 14px; height: 14px; border-radius: 50%;
+  background: var(--notch);
+}
+.ticket::before { top: -7px; }
+.ticket::after { bottom: -7px; }
+.t-main { padding: .7rem .9rem; min-width: 0; overflow-wrap: anywhere; }
+.t-main strong { display: block; font-family: var(--display); font-size: 1.05rem; }
+.t-stub {
+  width: 4.6rem; display: grid; place-content: center; text-align: center;
+  border-left: 2px dashed rgba(27,22,48,.45); font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.t-stub small { display: block; font-weight: 600; font-size: .75rem; }
+.ticket.hit { outline-color: var(--focus); }
+.ticket .tag { font-size: .8rem; font-weight: 700; }
+@keyframes drop { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+
+.search-row { display: flex; gap: .6rem; margin-bottom: .4rem; }
+.search-row input { flex: 1; min-width: 0; }
+.search-result { min-height: 1.4em; margin: 0 0 1rem; color: var(--muted); }
+
+/* log */
+.log-panel { margin-top: 1.25rem; }
+.log { margin: 0; padding-left: 2.2rem; display: grid; gap: .35rem; }
+.log li { padding-left: .2rem; overflow-wrap: anywhere; }
+.log li:first-child { font-weight: 600; }
+.log .bad { color: var(--danger); }
+
+/* how it works */
+.how-grid { display: grid; gap: 1.25rem; grid-template-columns: 1fr; margin-bottom: 1.5rem; }
+@media (min-width: 760px) { .how-grid { grid-template-columns: 1fr 1fr; } }
+.chips { display: flex; gap: .5rem; flex-wrap: wrap; margin: .75rem 0 .4rem; }
+.chips.stackv { flex-direction: column; align-items: flex-start; }
+.chip { border: 2px solid var(--primary); border-radius: 8px; padding: .35rem .9rem; font-weight: 700; font-variant-numeric: tabular-nums; background: var(--bg); }
+.chip.top { background: var(--primary); color: var(--on-primary); }
+.note { color: var(--muted); font-size: .92rem; margin: 0; }
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+th, td { text-align: left; padding: .65rem .9rem; border-bottom: 1px solid var(--line); }
+th { background: var(--seat-free); }
+tr:last-child td { border-bottom: 0; }
+
+/* code */
+.code-bar { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: .75rem; }
+.code-bar a.btn { text-decoration: none; display: inline-block; }
+pre {
+  margin: 0; background: var(--code-bg); color: var(--code-ink); border-radius: 12px;
+  padding: 1.1rem; overflow: auto; max-height: 34rem; font-size: .88rem; line-height: 1.5;
+  tab-size: 4;
+}
+code { font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace; }
+
+/* team */
+.team { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin: 1rem 0; padding: 0; list-style: none; }
+.team li { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: .8rem 1rem; }
+.team span { display: block; color: var(--muted); font-variant-numeric: tabular-nums; }
+footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2.5rem; color: var(--muted); font-size: .92rem; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body id="top">
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="#top">Movie Ticket Booking</a>
+    <nav aria-label="Page sections">
+      <a href="#demo">Try it</a>
+      <a href="#how">How it works</a>
+      <a href="#code">C code</a>
+      <a href="#team">Team</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+  <div class="hero">
+    <h1>Book a seat. Wait your turn.</h1>
+    <p>Choose your own seats on the map, then your request lines up in a queue, so the first person to ask is the first to be confirmed. Confirmed tickets pile onto a stack, so the latest booking is the first one you can cancel. Every movie has its own screen and its own seats.</p>
+  </div>
+
+  <section id="demo" aria-labelledby="demo-h">
+    <h2 id="demo-h">Try it</h2>
+    <p class="sub">Pick a movie, tap the seats you want, and join the queue. Then confirm the next request in line. Seats are tracked separately for each movie.</p>
+
+    <div class="demo-cols">
+      <div class="col">
+
+        <div class="panel">
+          <h3>Request tickets</h3>
+          <p class="sub" style="margin-bottom:1rem">Choose a movie, tap your seats, and your request joins the end of the waiting line. Your seats are held while you wait.</p>
+
+          <div class="field">
+            <label for="f-name">Your name</label>
+            <input id="f-name" type="text" maxlength="29" autocomplete="off" placeholder="For example, Asha" aria-describedby="f-err">
+          </div>
+
+          <div class="screen-head">
+            <h3 id="screen-title">Screen</h3>
+            <p class="seat-count" id="seat-count"></p>
+          </div>
+          <div class="tabs" role="group" aria-label="Choose a movie" id="tabs"></div>
+          <div class="screen-bar" aria-hidden="true"></div>
+          <div class="seats" id="seats" role="group" aria-label="Seat map"></div>
+          <p class="legend"><span>Free</span><span class="s">Your pick</span><span class="h">Held in queue</span><span class="b">Booked</span></p>
+
+          <p class="picked" id="picked" aria-live="polite"></p>
+          <p class="error" id="f-err" role="alert"></p>
+
+          <div class="btn-row">
+            <button type="button" class="btn" id="btn-join">Join the queue</button>
+            <button type="button" class="btn secondary" id="btn-clear">Clear seats</button>
+            <button type="button" class="btn secondary" id="btn-sample">Add sample requests</button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="col">
+
+        <div class="panel">
+          <h3>Waiting line</h3>
+          <p class="sub" style="margin-bottom:1rem">The queue. Confirming always serves the person at the front.</p>
+          <ul class="list" id="queue"></ul>
+          <button type="button" class="btn" id="btn-confirm">Confirm next request</button>
+        </div>
+
+        <div class="panel">
+          <h3>Confirmed tickets</h3>
+          <p class="sub" style="margin-bottom:1rem">The stack. The newest ticket sits on top and is cancelled first.</p>
+
+          <label for="f-search">Search by booking number</label>
+          <div class="search-row">
+            <input id="f-search" type="text" inputmode="numeric" autocomplete="off" placeholder="For example, 201">
+            <button type="button" class="btn secondary" id="btn-search">Search</button>
+          </div>
+          <p class="search-result" id="search-result" role="status"></p>
+
+          <ul class="list" id="stack"></ul>
+          <button type="button" class="btn secondary" id="btn-cancel">Cancel last booking</button>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="panel log-panel">
+      <h3>What the program just did</h3>
+      <p class="sub" style="margin-bottom:.75rem">Every click runs one queue or stack operation.</p>
+      <ol class="log" id="log" aria-live="polite"></ol>
+    </div>
+  </section>
+
+  <section id="how" aria-labelledby="how-h">
+    <h2 id="how-h">How it works</h2>
+    <p class="sub">The project is a menu-driven C program. This page runs the same logic in the browser so you can see the structures move.</p>
+
+    <div class="how-grid">
+      <div class="panel">
+        <h3>Queue: first in, first out</h3>
+        <p class="note" style="margin-bottom:.25rem">Booking requests are added at the rear and served from the front. Nobody can skip ahead, which keeps booking fair.</p>
+        <div class="chips" aria-label="Example queue: 201, 202, 203"><span class="chip">201</span><span class="chip">202</span><span class="chip">203</span></div>
+        <p class="note">Front is on the left, rear is on the right.</p>
+      </div>
+      <div class="panel">
+        <h3>Stack: last in, first out</h3>
+        <p class="note" style="margin-bottom:.25rem">A confirmed booking is pushed on top. Cancelling pops the top booking and returns its seats to the movie it was for.</p>
+        <div class="chips stackv" aria-label="Example stack from top: 203, 202, 201"><span class="chip top">203 (top)</span><span class="chip">202</span><span class="chip">201</span></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:1.5rem">
+      <h3>One screen per movie</h3>
+      <p class="note">Each movie is a small structure with its own name and its own seat map (rows A and B, ten seats each). The customer picks exact seats, and a booking remembers both the movie and those seats. The moment a request joins the queue its seats are held, so nobody else can pick them while it waits. Confirming moves the booking onto the stack, and cancelling pops it and frees those exact seats in the same movie only.</p>
+    </div>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th scope="col">Operation</th><th scope="col">Time</th><th scope="col">Why</th></tr></thead>
+        <tbody>
+          <tr><td>Request booking (enqueue)</td><td>O(1)</td><td>Insert at the rear</td></tr>
+          <tr><td>Confirm next (dequeue and push)</td><td>O(1)</td><td>Remove from front, add to top</td></tr>
+          <tr><td>Cancel last (pop)</td><td>O(1)</td><td>Remove the top ticket</td></tr>
+          <tr><td>Check a movie's free seats</td><td>O(1)</td><td>Each movie keeps its own counter</td></tr>
+          <tr><td>Pick or release one seat</td><td>O(1)</td><td>Index straight into the seat map</td></tr>
+          <tr><td>Display and search</td><td>O(n)</td><td>Visit every stored booking</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="code" aria-labelledby="code-h">
+    <h2 id="code-h">The C program</h2>
+    <p class="sub">The console version, written with arrays and structures. Compile it with <code>gcc movie_ticket.c -o movie_ticket</code>.</p>
+    <div class="code-bar">
+      <button type="button" class="btn secondary" id="btn-copy">Copy code</button>
+      <a class="btn" href="movie_ticket.c" download>Download movie_ticket.c</a>
+    </div>
+    <pre tabindex="0"><code id="c-code"></code></pre>
+  </section>
+
+  <section id="team" aria-labelledby="team-h">
+    <h2 id="team-h">Team</h2>
+    <p class="sub">CSE 2102 &ndash; Data Structures, B.Tech Cyber Security</p>
+    <ul class="team">
+      <li><strong>Mohamed Jaffar S</strong><span>250181601031</span></li>
+      <li><strong>Padmesh V</strong><span>250181601050</span></li>
+      <li><strong>Priyadharshini T</strong><span>250181601051</span></li>
+      <li><strong>Madhusudhan C</strong><span>250181601022</span></li>
+    </ul>
+    <p class="sub"><strong>Assistant Professor In Charge:</strong> Archana, Department of Data Structure, B.S. Abdur Rahman Crescent Institute of Science &amp; Technology.</p>
+  </section>
+
+</div>
+</main>
+
+<footer>
+  <div class="wrap">Academic project for demonstration only. It is not a real ticket booking service, and no payments are taken.</div>
+</footer>
+
+<script type="text/plain" id="c-source">#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+
+#define MAX 50                 /* max pending requests in the queue */
+#define NUM_MOVIES 3
+#define ROWS 2                 /* rows A and B */
+#define COLS 10                /* seats 1 to 10 in every row */
+#define SEATS_PER_MOVIE (ROWS * COLS)
+#define MAX_PER_BOOKING 6
+#define MAX_CONFIRMED (NUM_MOVIES * SEATS_PER_MOVIE)
+
+struct Movie {
+    char name[30];
+    int availableSeats;
+    int seatMap[SEATS_PER_MOVIE];  /* 0 = free, otherwise the booking ID that holds it */
+};
+
+struct Booking {
+    int id;
+    char name[30];
+    int movieIndex;            /* which movie this booking is for */
+    int seats;                 /* how many seats */
+    int seatNo[MAX_PER_BOOKING]; /* the exact seats the customer chose (0-based) */
+};
+
+struct Movie movies[NUM_MOVIES] = {
+    {"Neon Harbor",      SEATS_PER_MOVIE, {0}},
+    {"The Last Lantern", SEATS_PER_MOVIE, {0}},
+    {"Paper Moons",      SEATS_PER_MOVIE, {0}}
+};
+
+struct Booking queue[MAX];
+struct Booking stack[MAX_CONFIRMED];   /* a booking needs at least 1 seat */
+int front = 0, rear = -1, count = 0;
+int top = -1;
+
+void flushLine() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}
+
+int readInt() {
+    int n;
+    if (scanf("%d", &n) != 1) {
+        flushLine();
+        return -1;
+    }
+    return n;
+}
+
+void printSeatList(struct Booking *b) {
+    int i;
+    for (i = 0; i < b->seats; i++)
+        printf("%c%d%s", 'A' + b->seatNo[i] / COLS, b->seatNo[i] % COLS + 1,
+               i < b->seats - 1 ? ", " : "");
+}
+
+void displayMovies() {
+    int i;
+    printf("No.\tMovie\t\t\tSeats left\n");
+    for (i = 0; i < NUM_MOVIES; i++)
+        printf("%d\t%-18s\t%d\n", i + 1, movies[i].name,
+               movies[i].availableSeats);
+}
+
+/* Draw the seat map of one movie. XX means the seat is taken. */
+void displaySeats(int m) {
+    int r, c, idx;
+    printf("\nSeats for %s\n", movies[m].name);
+    printf("      ======== SCREEN ========\n");
+    for (r = 0; r < ROWS; r++) {
+        printf("  ");
+        for (c = 0; c < COLS; c++) {
+            idx = r * COLS + c;
+            if (movies[m].seatMap[idx] != 0)
+                printf("[XX ]");
+            else
+                printf("[%c%-2d]", 'A' + r, c + 1);
+        }
+        printf("\n");
+    }
+    printf("  XX = taken\n\n");
+}
+
+int idInUse(int id) {
+    int i, pos;
+    for (i = 0; i < count; i++) {
+        pos = (front + i) % MAX;
+        if (queue[pos].id == id) return 1;
+    }
+    for (i = 0; i <= top; i++)
+        if (stack[i].id == id) return 1;
+    return 0;
+}
+
+void requestBooking() {
+    struct Booking b;
+    struct Movie *m;
+    int choice, n, i, j, idx, col, dup;
+    char row;
+    if (count == MAX) {
+        printf("Booking queue is full!\n");
+        return;
+    }
+    printf("Enter Booking ID: ");
+    b.id = readInt();
+    if (b.id <= 0) {
+        printf("Invalid Booking ID!\n");
+        return;
+    }
+    if (idInUse(b.id)) {
+        printf("That Booking ID is already in use!\n");
+        return;
+    }
+    printf("Enter name: ");
+    scanf("%29s", b.name);
+    displayMovies();
+    printf("Choose movie number: ");
+    choice = readInt();
+    if (choice < 1 || choice > NUM_MOVIES) {
+        printf("Invalid movie!\n");
+        return;
+    }
+    b.movieIndex = choice - 1;
+    m = &movies[b.movieIndex];
+    if (m->availableSeats == 0) {
+        printf("Sorry, %s is sold out.\n", m->name);
+        return;
+    }
+
+    displaySeats(b.movieIndex);
+    printf("How many seats (1-%d)? ", MAX_PER_BOOKING);
+    n = readInt();
+    if (n < 1 || n > MAX_PER_BOOKING || n > m->availableSeats) {
+        printf("Invalid number of seats! (%d free)\n", m->availableSeats);
+        return;
+    }
+
+    /* The customer chooses each seat. */
+    b.seats = 0;
+    while (b.seats < n) {
+        printf("Pick seat %d of %d (for example A3): ", b.seats + 1, n);
+        if (scanf(" %c%d", &row, &col) != 2) {
+            if (feof(stdin)) return;
+            flushLine();
+            printf("Type a seat like A3.\n");
+            continue;
+        }
+        row = toupper((unsigned char)row);
+        if (row < 'A' || row >= 'A' + ROWS || col < 1 || col > COLS) {
+            printf("There is no seat %c%d.\n", row, col);
+            continue;
+        }
+        idx = (row - 'A') * COLS + (col - 1);
+        if (m->seatMap[idx] != 0) {
+            printf("Seat %c%d is already taken. Pick another.\n", row, col);
+            continue;
+        }
+        dup = 0;
+        for (j = 0; j < b.seats; j++)
+            if (b.seatNo[j] == idx) dup = 1;
+        if (dup) {
+            printf("You already picked %c%d.\n", row, col);
+            continue;
+        }
+        b.seatNo[b.seats++] = idx;
+    }
+
+    /* Hold the chosen seats so nobody else can pick them while we wait. */
+    for (i = 0; i < n; i++)
+        m->seatMap[b.seatNo[i]] = b.id;
+    m->availableSeats -= n;
+
+    rear = (rear + 1) % MAX;
+    queue[rear] = b;
+    count++;
+    printf("Booking request added to queue! Seats held: ");
+    printSeatList(&b);
+    printf("\n");
+}
+
+void displayQueue() {
+    int i, pos;
+    if (count == 0) {
+        printf("No pending booking requests.\n");
+        return;
+    }
+    printf("ID\tName\tMovie\t\tSeats\n");
+    for (i = 0; i < count; i++) {
+        pos = (front + i) % MAX;
+        printf("%d\t%s\t%s\t", queue[pos].id, queue[pos].name,
+               movies[queue[pos].movieIndex].name);
+        printSeatList(&queue[pos]);
+        printf("\n");
+    }
+}
+
+void confirmBooking() {
+    struct Booking b;
+    if (count == 0) {
+        printf("No pending booking requests.\n");
+        return;
+    }
+    b = queue[front];                  /* dequeue from the front */
+    front = (front + 1) % MAX;
+    count--;
+
+    top++;                             /* push onto the stack */
+    stack[top] = b;
+    printf("Booking confirmed for %s (ID %d) - %s, seats ", b.name, b.id,
+           movies[b.movieIndex].name);
+    printSeatList(&b);
+    printf("\n");
+}
+
+void displayConfirmed() {
+    int i;
+    if (top == -1) {
+        printf("No confirmed bookings.\n");
+        return;
+    }
+    printf("ID\tName\tMovie\t\tSeats\n");
+    for (i = top; i >= 0; i--) {
+        printf("%d\t%s\t%s\t", stack[i].id, stack[i].name,
+               movies[stack[i].movieIndex].name);
+        printSeatList(&stack[i]);
+        printf("\n");
+    }
+}
+
+void cancelLast() {
+    int i;
+    struct Movie *m;
+    if (top == -1) {
+        printf("No confirmed bookings to cancel.\n");
+        return;
+    }
+    /* The exact seats go back to that booking's own movie only. */
+    m = &movies[stack[top].movieIndex];
+    for (i = 0; i < stack[top].seats; i++)
+        m->seatMap[stack[top].seatNo[i]] = 0;
+    m->availableSeats += stack[top].seats;
+    printf("Cancelled booking of %s (ID %d) - %s, seats ", stack[top].name,
+           stack[top].id, m->name);
+    printSeatList(&stack[top]);
+    printf(" are free again.\n");
+    top--;
+}
+
+void searchBooking() {
+    int id, i, pos, found = 0;
+    printf("Enter Booking ID to search: ");
+    id = readInt();
+    for (i = 0; i < count; i++) {
+        pos = (front + i) % MAX;
+        if (queue[pos].id == id) {
+            printf("Found in pending queue: %s, %s, seats ",
+                   queue[pos].name, movies[queue[pos].movieIndex].name);
+            printSeatList(&queue[pos]);
+            printf("\n");
+            found = 1;
+        }
+    }
+    for (i = 0; i <= top; i++) {
+        if (stack[i].id == id) {
+            printf("Found in confirmed list: %s, %s, seats ",
+                   stack[i].name, movies[stack[i].movieIndex].name);
+            printSeatList(&stack[i]);
+            printf("\n");
+            found = 1;
+        }
+    }
+    if (found == 0)
+        printf("Booking ID not found.\n");
+}
+
+int main() {
+    int choice;
+    while (1) {
+        printf("\n--- MOVIE TICKET BOOKING SYSTEM ---\n");
+        displayMovies();
+        printf("1.Request Booking 2.Display Pending 3.Confirm Next\n");
+        printf("4.Display Confirmed 5.Cancel Last 6.Search 7.Exit\n");
+        printf("Enter choice: ");
+        choice = readInt();
+        if (feof(stdin)) return 0;
+        switch (choice) {
+            case 1: requestBooking(); break;
+            case 2: displayQueue(); break;
+            case 3: confirmBooking(); break;
+            case 4: displayConfirmed(); break;
+            case 5: cancelLast(); break;
+            case 6: searchBooking(); break;
+            case 7: printf("Thank you!\n"); return 0;
+            default: printf("Invalid choice!\n");
+        }
+    }
+    return 0;
+}
+</script>
+
+<script>
+(function () {
+  'use strict';
+
+  var ROWS = 2, COLS = 10;
+  var SEATS_PER_SCREEN = ROWS * COLS;
+  var MAX_QUEUE = 50;
+  var MAX_SEATS_PER_REQUEST = 6;
+  var LOG_SHOWN = 8;
+
+  /* Each movie has its own screen: its own seat map. seats[i] is null (free) or a booking id. */
+  var movies = ['Neon Harbor', 'The Last Lantern', 'Paper Moons'].map(function (name) {
+    var seats = [];
+    for (var i = 0; i < SEATS_PER_SCREEN; i++) seats.push(null);
+    return { name: name, seats: seats };
+  });
+
+  var queue = [];     /* front = index 0, rear = last */
+  var stack = [];     /* top = last */
+  var nextId = 201;
+  var viewMovie = 0;
+  var picked = [];    /* seat indexes the customer has tapped on the current screen */
+  var hitId = null;
+  var logEntries = [];
+  var freshId = null;
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  }
+  function freeSeats(m) {
+    var c = 0;
+    for (var i = 0; i < m.seats.length; i++) if (m.seats[i] === null) c++;
+    return c;
+  }
+  function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
+  function label(i) { return String.fromCharCode(65 + Math.floor(i / COLS)) + (i % COLS + 1); }
+  function labels(list) { return list.map(label).join(', '); }
+  function isBooked(id) {
+    for (var i = 0; i < stack.length; i++) if (stack[i].id === id) return true;
+    return false;
+  }
+
+  function log(text, bad) {
+    logEntries.push({ text: text, bad: !!bad });
+    renderLog();
+  }
+
+  /* ---- queue and stack operations ---- */
+
+  function enqueue(name, movieIdx, seatList) {
+    if (queue.length >= MAX_QUEUE) {
+      log('The queue is full (' + MAX_QUEUE + ' requests). Confirm some requests first.', true);
+      return false;
+    }
+    var m = movies[movieIdx];
+    for (var i = 0; i < seatList.length; i++) {
+      if (m.seats[seatList[i]] !== null) {
+        log('Seat ' + label(seatList[i]) + ' was just taken. Pick another seat.', true);
+        return false;
+      }
+    }
+    var b = { id: nextId++, name: name, movie: movieIdx, count: seatList.length, seatNos: seatList.slice().sort(function (x, y) { return x - y; }) };
+    b.seatNos.forEach(function (s) { m.seats[s] = b.id; });   /* hold the seats while waiting */
+    queue.push(b);
+    log('Enqueue: #' + b.id + ' ' + name + ' chose ' + plural(b.count, 'seat') + ' (' + labels(b.seatNos) +
+        ') for ' + m.name + '. Added at the rear of the queue and the seats are held.');
+    return true;
+  }
+
+  function confirmNext() {
+    if (queue.length === 0) return;
+    var b = queue.shift();                 /* dequeue from the front */
+    viewMovie = b.movie;
+    picked = [];
+    stack.push(b);                         /* push onto the top */
+    freshId = b.id;
+    log('Dequeue and push: #' + b.id + ' ' + b.name + ' confirmed for ' + movies[b.movie].name +
+        ', seats ' + labels(b.seatNos) + '. The ticket is now on top of the stack.');
+  }
+
+  function cancelLast() {
+    if (stack.length === 0) return;
+    var b = stack.pop();                   /* pop the top */
+    var m = movies[b.movie];
+    for (var i = 0; i < m.seats.length; i++) if (m.seats[i] === b.id) m.seats[i] = null;
+    viewMovie = b.movie;
+    picked = [];
+    log('Pop: cancelled #' + b.id + ' ' + b.name + '. Seats ' + labels(b.seatNos) +
+        ' are free again for ' + m.name + ' only.');
+  }
+
+  function search(id) {
+    var out = $('search-result');
+    var qi = -1, si = -1, i;
+    for (i = 0; i < queue.length; i++) if (queue[i].id === id) qi = i;
+    for (i = 0; i < stack.length; i++) if (stack[i].id === id) si = i;
+    hitId = null;
+    var msg;
+    if (qi >= 0) {
+      hitId = id;
+      msg = '#' + id + ' is in the waiting line, place ' + (qi + 1) + ' of ' + queue.length + ', seats ' + labels(queue[qi].seatNos) + '.';
+    } else if (si >= 0) {
+      hitId = id;
+      var s = stack[si];
+      msg = '#' + id + ' is a confirmed ticket for ' + movies[s.movie].name + ', seats ' + labels(s.seatNos) + '.';
+    } else {
+      msg = 'Booking number ' + id + ' was not found.';
+    }
+    out.textContent = msg;
+    log('Search: ' + msg, hitId === null);
+  }
+
+  /* ---- rendering ---- */
+
+  function renderTabs() {
+    var wrap = $('tabs');
+    wrap.textContent = '';
+    movies.forEach(function (m, i) {
+      var b = el('button', 'tab');
+      b.type = 'button';
+      b.setAttribute('aria-pressed', i === viewMovie ? 'true' : 'false');
+      b.appendChild(document.createTextNode(m.name));
+      b.appendChild(el('small', '', freeSeats(m) + ' free'));
+      b.addEventListener('click', function () {
+        if (viewMovie !== i) picked = [];
+        viewMovie = i;
+        $('f-err').textContent = '';
+        renderScreen();
+        renderTabs();
+      });
+      wrap.appendChild(b);
+    });
+  }
+
+  function togglePick(i) {
+    var at = picked.indexOf(i);
+    var err = $('f-err');
+    err.textContent = '';
+    if (at >= 0) {
+      picked.splice(at, 1);
+    } else if (picked.length >= MAX_SEATS_PER_REQUEST) {
+      err.textContent = 'You can pick up to ' + MAX_SEATS_PER_REQUEST + ' seats in one request.';
+      return;
+    } else {
+      picked.push(i);
+    }
+    renderScreen();
+  }
+
+  function renderScreen() {
+    var m = movies[viewMovie];
+    var free = freeSeats(m);
+    $('screen-title').textContent = 'Screen: ' + m.name;
+    $('seat-count').textContent = free + ' of ' + SEATS_PER_SCREEN + ' seats free';
+    var grid = $('seats');
+    grid.textContent = '';
+    grid.setAttribute('aria-label', m.name + ' seat map: ' + free + ' of ' + SEATS_PER_SCREEN + ' seats free');
+    m.seats.forEach(function (owner, i) {
+      var s = el('button', 'seat', label(i));
+      s.type = 'button';
+      if (owner === null) {
+        var on = picked.indexOf(i) >= 0;
+        s.setAttribute('aria-pressed', on ? 'true' : 'false');
+        s.setAttribute('aria-label', 'Seat ' + label(i) + (on ? ', selected' : ', free'));
+        s.addEventListener('click', function () { togglePick(i); });
+      } else {
+        var booked = isBooked(owner);
+        s.className += booked ? ' booked' : ' held';
+        s.disabled = true;
+        s.setAttribute('aria-label', 'Seat ' + label(i) + (booked ? ', booked' : ', held by a waiting request'));
+      }
+      grid.appendChild(s);
+    });
+    var p = $('picked');
+    var sorted = picked.slice().sort(function (x, y) { return x - y; });
+    p.textContent = picked.length === 0
+      ? 'Tap the seats you want.'
+      : 'Your seats: ' + labels(sorted) + ' (' + picked.length + ' of ' + MAX_SEATS_PER_REQUEST + ')';
+    $('btn-clear').disabled = picked.length === 0;
+  }
+
+  function renderQueue() {
+    var ul = $('queue');
+    ul.textContent = '';
+    if (queue.length === 0) {
+      ul.appendChild(el('li', 'empty', 'No one is waiting. Pick seats and join the queue, or add sample requests.'));
+    }
+    queue.forEach(function (b, i) {
+      var li = el('li', 'q-item' + (b.id === hitId ? ' hit' : ''));
+      li.appendChild(el('span', 'q-id', '#' + b.id));
+      var main = el('div', 'q-main', b.name);
+      main.appendChild(el('span', '', movies[b.movie].name + ', seats ' + labels(b.seatNos)));
+      li.appendChild(main);
+      var tag = i === 0 && queue.length === 1 ? 'Front and rear' : i === 0 ? 'Front' : i === queue.length - 1 ? 'Rear' : '';
+      li.appendChild(el('span', 'pos', tag));
+      ul.appendChild(li);
+    });
+    $('btn-confirm').disabled = queue.length === 0;
+  }
+
+  function renderStack() {
+    var ul = $('stack');
+    ul.textContent = '';
+    if (stack.length === 0) {
+      ul.appendChild(el('li', 'empty', 'No confirmed tickets yet. Confirm a request to place a ticket here.'));
+    }
+    for (var i = stack.length - 1; i >= 0; i--) {
+      var b = stack[i];
+      var li = el('li', 'ticket' + (b.id === hitId ? ' hit' : '') + (b.id === freshId ? ' fresh' : ''));
+      var main = el('div', 't-main');
+      main.appendChild(el('strong', '', movies[b.movie].name));
+      main.appendChild(document.createTextNode(b.name + ', seats ' + labels(b.seatNos)));
+      if (i === stack.length - 1) {
+        main.appendChild(el('div', 'tag', 'Top of the stack: cancelled first'));
+      }
+      li.appendChild(main);
+      var stub = el('div', 't-stub');
+      stub.appendChild(el('small', '', 'No.'));
+      stub.appendChild(document.createTextNode(String(b.id)));
+      li.appendChild(stub);
+      ul.appendChild(li);
+    }
+    $('btn-cancel').disabled = stack.length === 0;
+    freshId = null;
+  }
+
+  function renderLog() {
+    var ol = $('log');
+    ol.textContent = '';
+    if (logEntries.length === 0) {
+      ol.appendChild(el('li', '', 'Nothing yet. Pick seats and join the queue to start.'));
+      ol.removeAttribute('reversed');
+      ol.removeAttribute('start');
+      return;
+    }
+    var shown = logEntries.slice(-LOG_SHOWN).reverse();
+    ol.setAttribute('reversed', '');
+    ol.setAttribute('start', String(logEntries.length));
+    shown.forEach(function (e) {
+      ol.appendChild(el('li', e.bad ? 'bad' : '', e.text));
+    });
+  }
+
+  function renderAll() {
+    renderTabs();
+    renderScreen();
+    renderQueue();
+    renderStack();
+    renderLog();
+  }
+
+  /* ---- events ---- */
+
+  $('btn-clear').addEventListener('click', function () {
+    picked = [];
+    $('f-err').textContent = '';
+    renderScreen();
+  });
+
+  $('btn-join').addEventListener('click', function () {
+    var input = $('f-name');
+    var name = input.value.trim();
+    var err = $('f-err');
+    if (!name) {
+      err.textContent = 'Enter a name so we know who the tickets are for.';
+      input.focus();
+      return;
+    }
+    if (picked.length === 0) {
+      err.textContent = 'Tap at least one free seat on the map.';
+      return;
+    }
+    err.textContent = '';
+    hitId = null;
+    $('search-result').textContent = '';
+    if (enqueue(name, viewMovie, picked)) {
+      input.value = '';
+      picked = [];
+    }
+    renderAll();
+  });
+
+  $('f-name').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); $('btn-join').click(); }
+  });
+  $('f-name').addEventListener('input', function () { $('f-err').textContent = ''; });
+
+  /* sample requests choose the first free seats for each person */
+  function firstFree(movieIdx, n) {
+    var out = [], m = movies[movieIdx];
+    for (var i = 0; i < m.seats.length && out.length < n; i++) if (m.seats[i] === null) out.push(i);
+    return out.length === n ? out : null;
+  }
+  $('btn-sample').addEventListener('click', function () {
+    hitId = null;
+    $('search-result').textContent = '';
+    picked = [];
+    [['Asha', 0, 2], ['Ravi', 1, 3], ['Meena', 0, 4]].forEach(function (r) {
+      var s = firstFree(r[1], r[2]);
+      if (s) enqueue(r[0], r[1], s);
+      else log('Not enough free seats on ' + movies[r[1]].name + ' for ' + r[0] + '.', true);
+    });
+    renderAll();
+  });
+
+  $('btn-confirm').addEventListener('click', function () {
+    hitId = null;
+    $('search-result').textContent = '';
+    confirmNext();
+    renderAll();
+  });
+
+  $('btn-cancel').addEventListener('click', function () {
+    hitId = null;
+    $('search-result').textContent = '';
+    cancelLast();
+    renderAll();
+  });
+
+  function doSearch() {
+    var raw = $('f-search').value.trim().replace('#', '');
+    var out = $('search-result');
+    if (!/^\d+$/.test(raw)) {
+      out.textContent = 'Type a booking number, such as 201.';
+      return;
+    }
+    search(parseInt(raw, 10));
+    renderQueue();
+    renderStack();
+  }
+  $('btn-search').addEventListener('click', doSearch);
+  $('f-search').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
+  });
+
+  /* ---- C code block ---- */
+  var source = $('c-source').textContent.replace(/^\s*\n/, '');
+  $('c-code').textContent = source;
+  $('btn-copy').addEventListener('click', function () {
+    var btn = this;
+    function done(ok) {
+      btn.textContent = ok ? 'Copied' : 'Press Ctrl+C to copy';
+      setTimeout(function () { btn.textContent = 'Copy code'; }, 1800);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(source).then(function () { done(true); }, function () { done(false); });
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = source;
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta);
+      done(ok);
+    }
+  });
+
+  renderAll();
+})();
+</script>
+</body>
+</html>
